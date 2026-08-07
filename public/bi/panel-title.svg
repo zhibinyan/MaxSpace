@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="36" viewBox="0 0 280 36" fill="none">
+  <path d="M0 18 H18" stroke="#3de7ff" stroke-width="2"/>
+  <path d="M18 8 V28" stroke="#3de7ff" stroke-width="2"/>
+  <path d="M24 18 H260" stroke="#1a6aaa" stroke-width="1"/>
+  <path d="M260 8 V28" stroke="#3de7ff" stroke-width="2"/>
+  <path d="M260 18 H280" stroke="#3de7ff" stroke-width="2"/>
+  <polygon points="22,10 36,18 22,26" fill="#3de7ff" opacity="0.85"/>
+</svg>

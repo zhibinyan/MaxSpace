@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="90" viewBox="0 0 1200 90" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a3a6a" stop-opacity="0"/>
+      <stop offset="0.2" stop-color="#0d5a9a" stop-opacity="0.85"/>
+      <stop offset="0.5" stop-color="#1280c8" stop-opacity="0.95"/>
+      <stop offset="0.8" stop-color="#0d5a9a" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#0a3a6a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1200" y2="0">
+      <stop offset="0" stop-color="#3de7ff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#7ef0ff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#3de7ff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path d="M40 70 L180 20 H1020 L1160 70" stroke="url(#line)" stroke-width="1.5"/>
+  <path d="M60 78 L200 28 H1000 L1140 78" stroke="#1a6aaa" stroke-width="1" opacity="0.5"/>
+  <polygon points="200,28 1000,28 1020,20 180,20" fill="url(#g)" opacity="0.55"/>
+  <path d="M40 70 L55 70 L70 55" stroke="#3de7ff" stroke-width="2"/>
+  <path d="M1160 70 L1145 70 L1130 55" stroke="#3de7ff" stroke-width="2"/>
+  <circle cx="200" cy="28" r="2.5" fill="#7ef0ff"/>
+  <circle cx="1000" cy="28" r="2.5" fill="#7ef0ff"/>
+</svg>

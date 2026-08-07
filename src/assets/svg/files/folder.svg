@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="fmFolderBody" x1="20" y1="36" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7EC8F5"/>
+      <stop offset="1" stop-color="#4BA3E3"/>
+    </linearGradient>
+    <linearGradient id="fmFolderTab" x1="18" y1="24" x2="58" y2="44" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5BB4EC"/>
+      <stop offset="1" stop-color="#3A8FD0"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#fmFolderTab)" d="M18 36c0-5.5 4.5-10 10-10h24.2c2.4 0 4.7 1.1 6.2 2.9l5.1 6.1c.7.9 1.8 1.4 2.9 1.4H100c5.5 0 10 4.5 10 10v4H18v-14.4z"/>
+  <path fill="url(#fmFolderBody)" d="M14 48c0-5.5 4.5-10 10-10h80c5.5 0 10 4.5 10 10v48c0 5.5-4.5 10-10 10H24c-5.5 0-10-4.5-10-10V48z"/>
+  <path fill="#A8D9F8" opacity=".55" d="M24 52h80c2.2 0 4 1.8 4 4v4H20v-4c0-2.2 1.8-4 4-4z"/>
+</svg>
