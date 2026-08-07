@@ -37,7 +37,8 @@ Linux 服务中心（一级，Launchpad 文件夹）
 ├── 主机管理（二级）
 ├── SSH 终端（二级）
 ├── 远程文件（二级，SFTP，≠ 本地文件管理）
-└── 会话审计（二级）
+├── 会话审计（二级）
+└── Docker 管理（二级）
 ```
 
 | 菜单 | path | name | 组件 |
@@ -47,8 +48,9 @@ Linux 服务中心（一级，Launchpad 文件夹）
 | SSH 终端 | `ssh` | `linuxSsh` | `@/views/linux/ssh/SshTerminalView.vue` |
 | 远程文件 | `sftp` | `linuxSftp` | `@/views/linux/sftp/SftpFileView.vue` |
 | 会话审计 | `audit` | `linuxAudit` | `@/views/linux/audit/SshAuditView.vue` |
+| Docker 管理 | `docker` | `linuxDocker` | `@/views/linux/docker/DockerManageView.vue` |
 
-完整路由示例：`/linux/hosts`、`/linux/ssh`、`/linux/sftp`、`/linux/audit`。
+完整路由示例：`/linux/hosts`、`/linux/ssh`、`/linux/sftp`、`/linux/audit`、`/linux/docker`。
 
 ---
 

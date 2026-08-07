@@ -474,3 +474,299 @@ export interface LinuxAiChatItem {
 export function fetchLinuxAiHistory(limit = 50) {
   return apiRequest<LinuxAiChatItem[]>(`/api/linux/ai/history?limit=${limit}`)
 }
+
+/* ─── Docker 管理 ─────────────────────────────────── */
+
+export interface DockerOverview {
+  version: string
+  status: string
+  containers: { total: number; running: number; stopped: number; paused: number }
+  images: number
+  volumes: number
+  networks: number
+  storage: string
+  driver: string
+  os: string
+}
+
+export interface DockerContainer {
+  id: string
+  name: string
+  image: string
+  status: string
+  state: string
+  created: string
+  ports: string
+  networks: string
+  command: string
+  cpu?: string
+  mem?: string
+  memPerc?: string
+}
+
+export interface DockerImage {
+  id: string
+  repository: string
+  tag: string
+  size: string
+  created: string
+  usedBy?: string[]
+  usedCount?: number
+}
+
+export interface DockerNetwork {
+  id: string
+  name: string
+  driver: string
+  scope: string
+  containers?: string[]
+  containerCount?: number
+}
+
+export interface DockerVolume {
+  name: string
+  driver: string
+  mountpoint: string
+  created?: string
+  usedBy?: string[]
+  usedCount?: number
+}
+
+export interface DockerComposeApp {
+  name: string
+  status: string
+  configFiles: string
+  serviceCount?: number
+  updatedAt?: string
+}
+
+export interface DockerAuditItem {
+  id: number
+  hostId: number
+  username: string
+  action: string
+  target: string
+  detail: string
+  success: boolean
+  createdAt: string
+}
+
+export interface DockerStatItem {
+  id: string
+  name: string
+  cpu: string
+  memUsage: string
+  memPerc: string
+  netIO: string
+  blockIO: string
+}
+
+function dockerQs(hostId: number, extra: Record<string, string | number | undefined> = {}) {
+  const qs = new URLSearchParams({ hostId: String(hostId) })
+  for (const [k, v] of Object.entries(extra)) {
+    if (v !== undefined && v !== '') qs.set(k, String(v))
+  }
+  return qs.toString()
+}
+
+export function fetchDockerOverview(hostId: number) {
+  return apiRequest<DockerOverview>(`/api/linux/docker/overview?${dockerQs(hostId)}`, { silent: true })
+}
+
+export function fetchDockerContainers(hostId: number, all = true) {
+  return apiRequest<DockerContainer[]>(
+    `/api/linux/docker/containers?${dockerQs(hostId, { all: all ? 1 : 0 })}`,
+    { silent: true },
+  )
+}
+
+export function fetchDockerContainerInspect(hostId: number, id: string) {
+  return apiRequest<Record<string, unknown>>(
+    `/api/linux/docker/containers/inspect?${dockerQs(hostId, { id })}`,
+  )
+}
+
+export function fetchDockerContainerDetail(hostId: number, id: string) {
+  return apiRequest<Record<string, unknown>>(
+    `/api/linux/docker/containers/detail?${dockerQs(hostId, { id })}`,
+  )
+}
+
+export function fetchDockerContainerStats(hostId: number, id?: string) {
+  return apiRequest<DockerStatItem[]>(
+    `/api/linux/docker/containers/stats?${dockerQs(hostId, { id })}`,
+    { silent: true },
+  )
+}
+
+export function fetchDockerContainerLogs(
+  hostId: number,
+  id: string,
+  tail = 200,
+  since = '',
+  timestamps = false,
+) {
+  return apiRequest<{ container: string; tail: number; logs: string }>(
+    `/api/linux/docker/containers/logs?${dockerQs(hostId, {
+      id,
+      tail,
+      since,
+      timestamps: timestamps ? 1 : 0,
+    })}`,
+  )
+}
+
+export function dockerContainerAction(hostId: number, id: string, action: string) {
+  return apiRequest<{ ok: boolean; output: string }>('/api/linux/docker/containers/action', {
+    method: 'POST',
+    body: JSON.stringify({ hostId, id, action }),
+  })
+}
+
+export function fetchDockerImages(hostId: number) {
+  return apiRequest<DockerImage[]>(`/api/linux/docker/images?${dockerQs(hostId)}`, { silent: true })
+}
+
+export function dockerImagePull(hostId: number, image: string) {
+  return apiRequest<{ ok: boolean; output: string }>('/api/linux/docker/images/pull', {
+    method: 'POST',
+    body: JSON.stringify({ hostId, image }),
+  })
+}
+
+export function dockerImageRemove(hostId: number, image: string, force = false) {
+  return apiRequest<{ ok: boolean; output: string }>('/api/linux/docker/images/remove', {
+    method: 'POST',
+    body: JSON.stringify({ hostId, image, force }),
+  })
+}
+
+export function fetchDockerImageInspect(hostId: number, image: string) {
+  return apiRequest<Record<string, unknown>>(
+    `/api/linux/docker/images/inspect?${dockerQs(hostId, { image })}`,
+  )
+}
+
+export function dockerImageExportUrl(hostId: number, image: string) {
+  return `/api/linux/docker/images/export?${dockerQs(hostId, { image })}`
+}
+
+export async function dockerImageImport(hostId: number, file: File) {
+  const fd = new FormData()
+  fd.append('hostId', String(hostId))
+  fd.append('file', file)
+  return apiRequest<{ ok: boolean; output: string }>('/api/linux/docker/images/import', {
+    method: 'POST',
+    body: fd,
+  })
+}
+
+export function fetchDockerNetworks(hostId: number) {
+  return apiRequest<DockerNetwork[]>(`/api/linux/docker/networks?${dockerQs(hostId)}`, {
+    silent: true,
+  })
+}
+
+export function fetchDockerNetworkInspect(hostId: number, name: string) {
+  return apiRequest<Record<string, unknown>>(
+    `/api/linux/docker/networks/inspect?${dockerQs(hostId, { name })}`,
+  )
+}
+
+export function dockerNetworkCreate(hostId: number, name: string, driver = 'bridge') {
+  return apiRequest<{ ok: boolean; id: string }>('/api/linux/docker/networks', {
+    method: 'POST',
+    body: JSON.stringify({ hostId, name, driver }),
+  })
+}
+
+export function dockerNetworkRemove(hostId: number, name: string) {
+  return apiRequest<{ ok: boolean; output: string }>('/api/linux/docker/networks/remove', {
+    method: 'POST',
+    body: JSON.stringify({ hostId, name }),
+  })
+}
+
+export function fetchDockerVolumes(hostId: number) {
+  return apiRequest<DockerVolume[]>(`/api/linux/docker/volumes?${dockerQs(hostId)}`, { silent: true })
+}
+
+export function fetchDockerVolumeInspect(hostId: number, name: string) {
+  return apiRequest<Record<string, unknown>>(
+    `/api/linux/docker/volumes/inspect?${dockerQs(hostId, { name })}`,
+  )
+}
+
+export function dockerVolumeCreate(hostId: number, name: string) {
+  return apiRequest<{ ok: boolean; name: string }>('/api/linux/docker/volumes', {
+    method: 'POST',
+    body: JSON.stringify({ hostId, name }),
+  })
+}
+
+export function dockerVolumeRemove(hostId: number, name: string) {
+  return apiRequest<{ ok: boolean; output: string }>('/api/linux/docker/volumes/remove', {
+    method: 'POST',
+    body: JSON.stringify({ hostId, name }),
+  })
+}
+
+export function dockerVolumeBackupUrl(hostId: number, name: string) {
+  return `/api/linux/docker/volumes/backup?${dockerQs(hostId, { name })}`
+}
+
+export async function dockerVolumeRestore(hostId: number, name: string, file: File) {
+  const fd = new FormData()
+  fd.append('hostId', String(hostId))
+  fd.append('name', name)
+  fd.append('file', file)
+  return apiRequest<{ ok: boolean; output: string }>('/api/linux/docker/volumes/restore', {
+    method: 'POST',
+    body: fd,
+  })
+}
+
+export function fetchDockerCompose(hostId: number) {
+  return apiRequest<DockerComposeApp[]>(`/api/linux/docker/compose?${dockerQs(hostId)}`, {
+    silent: true,
+  })
+}
+
+export function fetchDockerComposeConfig(hostId: number, project: string, file = '') {
+  return apiRequest<{ project: string; config: string }>(
+    `/api/linux/docker/compose/config?${dockerQs(hostId, { project, file })}`,
+  )
+}
+
+export function fetchDockerComposeLogs(hostId: number, project: string, tail = 200) {
+  return apiRequest<{ project: string; logs: string }>(
+    `/api/linux/docker/compose/logs?${dockerQs(hostId, { project, tail })}`,
+  )
+}
+
+export function dockerComposeAction(hostId: number, project: string, action: string, file = '') {
+  return apiRequest<{ ok: boolean; output: string }>('/api/linux/docker/compose/action', {
+    method: 'POST',
+    body: JSON.stringify({ hostId, project, action, file }),
+  })
+}
+
+export function fetchDockerAudit(params: {
+  hostId?: number | string
+  username?: string
+  limit?: number
+} = {}) {
+  const qs = new URLSearchParams()
+  if (params.hostId) qs.set('hostId', String(params.hostId))
+  if (params.username) qs.set('username', params.username)
+  if (params.limit) qs.set('limit', String(params.limit))
+  const q = qs.toString()
+  return apiRequest<DockerAuditItem[]>(`/api/linux/docker/audit${q ? `?${q}` : ''}`)
+}
+
+export function linuxDockerExecWsUrl(hostId: number, container: string) {
+  const token = localStorage.getItem('maxadmin_token') || ''
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  const host = window.location.host
+  return `${proto}://${host}/ws/linux/docker/${hostId}/exec?container=${encodeURIComponent(container)}&token=${encodeURIComponent(token)}`
+}

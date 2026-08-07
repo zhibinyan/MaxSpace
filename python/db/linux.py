@@ -164,6 +164,23 @@ def init_linux_tables(cursor) -> None:
         """
     )
 
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS linux_docker_audit (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            host_id INT NOT NULL,
+            username VARCHAR(64) NOT NULL,
+            action VARCHAR(64) NOT NULL,
+            target VARCHAR(255) NOT NULL DEFAULT '',
+            detail VARCHAR(2000) NOT NULL DEFAULT '',
+            success TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_linux_docker_audit_host (host_id, created_at),
+            INDEX idx_linux_docker_audit_user (username, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
 
 def seed_linux_service_menu(cursor) -> None:
     """注册 Linux 服务中心一级菜单及二级菜单。"""
@@ -220,6 +237,14 @@ def seed_linux_service_menu(cursor) -> None:
             'log',
             '@/views/linux/audit/SshAuditView.vue',
             40,
+        ),
+        (
+            'docker',
+            'linuxDocker',
+            'Docker管理',
+            'dk',
+            '@/views/linux/docker/DockerManageView.vue',
+            50,
         ),
     ]
 

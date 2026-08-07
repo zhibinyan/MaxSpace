@@ -17,7 +17,7 @@ from routes.markdown import markdown_bp
 from routes.process import process_bp
 from routes.file import file_bp
 from routes.linux import linux_bp
-from services import linux_ssh_service
+from services import linux_docker_service, linux_ssh_service
 
 
 def create_app() -> Flask:
@@ -43,6 +43,20 @@ def create_app() -> Flask:
             ws.close()
             return
         linux_ssh_service.bridge_websocket(ws, host_id, username)
+
+    @sock.route('/ws/linux/docker/<int:host_id>/exec')
+    def linux_docker_exec_ws(ws, host_id: int):
+        token = (request.args.get('token') or '').strip()
+        container = (request.args.get('container') or '').strip()
+        username = verify_token(token)
+        if not username:
+            try:
+                ws.send('{"type":"error","message":"未登录或登录已过期"}')
+            except Exception:
+                pass
+            ws.close()
+            return
+        linux_docker_service.bridge_exec_websocket(ws, host_id, container, username)
 
     @app.post('/api/login')
     def login():

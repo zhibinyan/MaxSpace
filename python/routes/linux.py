@@ -4,6 +4,7 @@ from middleware.auth import login_required
 from response import ApiCode, fail, ok, success
 from services import (
     linux_ai_service,
+    linux_docker_service,
     linux_host_service,
     linux_pref_service,
     linux_session_service,
@@ -589,4 +590,462 @@ def ai_history():
         return fail(str(exc), code=ApiCode.BAD_REQUEST)
     except Exception as exc:  # noqa: BLE001
         return fail(f'加载 AI 记录失败：{exc}', code=ApiCode.BAD_REQUEST)
+    return ok(items)
+
+
+# ─── Docker 管理 ───────────────────────────────────────
+
+
+def _docker_host_id() -> int:
+    hid = request.args.get('hostId') or (request.get_json(silent=True) or {}).get('hostId')
+    try:
+        return int(hid or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+@linux_bp.get('/docker/overview')
+@login_required
+def docker_overview():
+    host_id = _docker_host_id()
+    if not host_id:
+        return fail('请选择主机', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.overview(host_id))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/containers')
+@login_required
+def docker_containers():
+    host_id = _docker_host_id()
+    if not host_id:
+        return fail('请选择主机', code=ApiCode.BAD_REQUEST)
+    all_ = str(request.args.get('all') or '1') not in ('0', 'false', 'False')
+    with_stats = str(request.args.get('stats') or '1') not in ('0', 'false', 'False')
+    try:
+        return ok(linux_docker_service.list_containers(host_id, all_=all_, with_stats=with_stats))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/containers/detail')
+@login_required
+def docker_container_detail():
+    host_id = _docker_host_id()
+    cid = str(request.args.get('id') or request.args.get('container') or '').strip()
+    if not host_id or not cid:
+        return fail('请指定主机和容器', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.container_detail(host_id, cid))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/containers/inspect')
+@login_required
+def docker_container_inspect():
+    host_id = _docker_host_id()
+    cid = str(request.args.get('id') or request.args.get('container') or '').strip()
+    if not host_id or not cid:
+        return fail('请指定主机和容器', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.container_inspect(host_id, cid))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/containers/stats')
+@login_required
+def docker_container_stats():
+    host_id = _docker_host_id()
+    if not host_id:
+        return fail('请选择主机', code=ApiCode.BAD_REQUEST)
+    cid = str(request.args.get('id') or '').strip()
+    try:
+        return ok(linux_docker_service.container_stats(host_id, cid))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/containers/logs')
+@login_required
+def docker_container_logs():
+    host_id = _docker_host_id()
+    cid = str(request.args.get('id') or request.args.get('container') or '').strip()
+    if not host_id or not cid:
+        return fail('请指定主机和容器', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(
+            linux_docker_service.container_logs(
+                host_id,
+                cid,
+                tail=int(request.args.get('tail') or 200),
+                since=str(request.args.get('since') or ''),
+                timestamps=str(request.args.get('timestamps') or '0') in ('1', 'true', 'True'),
+            )
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.post('/docker/containers/action')
+@login_required
+def docker_container_action():
+    data = request.get_json(silent=True) or {}
+    host_id = int(data.get('hostId') or 0)
+    cid = str(data.get('id') or data.get('container') or '').strip()
+    action = str(data.get('action') or '').strip()
+    if not host_id or not cid or not action:
+        return fail('参数不完整', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.container_action(
+            host_id,
+            cid,
+            action,
+            username=getattr(g, 'current_user', None) or '',
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.UPDATE_SUCCESS, message=f'已执行 {action}', title=cid)
+
+
+@linux_bp.get('/docker/images')
+@login_required
+def docker_images():
+    host_id = _docker_host_id()
+    if not host_id:
+        return fail('请选择主机', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.list_images(host_id))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.post('/docker/images/pull')
+@login_required
+def docker_image_pull():
+    data = request.get_json(silent=True) or {}
+    host_id = int(data.get('hostId') or 0)
+    image = str(data.get('image') or '').strip()
+    if not host_id or not image:
+        return fail('请指定主机和镜像', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.image_pull(
+            host_id, image, username=getattr(g, 'current_user', None) or ''
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.UPDATE_SUCCESS, message='拉取完成', title=image)
+
+
+@linux_bp.post('/docker/images/remove')
+@login_required
+def docker_image_remove():
+    data = request.get_json(silent=True) or {}
+    host_id = int(data.get('hostId') or 0)
+    image = str(data.get('image') or data.get('id') or '').strip()
+    force = bool(data.get('force'))
+    if not host_id or not image:
+        return fail('请指定主机和镜像', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.image_remove(
+            host_id, image, force=force, username=getattr(g, 'current_user', None) or ''
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.DELETE_SUCCESS, message='镜像已删除', title=image)
+
+
+@linux_bp.get('/docker/images/inspect')
+@login_required
+def docker_image_inspect():
+    host_id = _docker_host_id()
+    image = str(request.args.get('image') or request.args.get('id') or '').strip()
+    if not host_id or not image:
+        return fail('请指定主机和镜像', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.image_inspect(host_id, image))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/images/export')
+@login_required
+def docker_image_export():
+    host_id = _docker_host_id()
+    image = str(request.args.get('image') or '').strip()
+    if not host_id or not image:
+        return fail('请指定主机和镜像', code=ApiCode.BAD_REQUEST)
+    try:
+        filename, data = linux_docker_service.image_export_bytes(host_id, image)
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return Response(
+        data,
+        mimetype='application/x-tar',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
+@linux_bp.post('/docker/images/import')
+@login_required
+def docker_image_import():
+    host_id = int(request.form.get('hostId') or 0)
+    f = request.files.get('file')
+    if not host_id or not f:
+        return fail('请指定主机并上传 tar 文件', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.image_import_file(
+            host_id,
+            f.filename or 'image.tar',
+            f.read(),
+            username=getattr(g, 'current_user', None) or '',
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.CREATE_SUCCESS, message='镜像已导入', title=f.filename or '')
+
+
+@linux_bp.get('/docker/networks')
+@login_required
+def docker_networks():
+    host_id = _docker_host_id()
+    if not host_id:
+        return fail('请选择主机', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.list_networks(host_id))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/networks/inspect')
+@login_required
+def docker_network_inspect():
+    host_id = _docker_host_id()
+    name = str(request.args.get('name') or '').strip()
+    if not host_id or not name:
+        return fail('请指定主机和网络', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.network_inspect(host_id, name))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.post('/docker/networks')
+@login_required
+def docker_network_create():
+    data = request.get_json(silent=True) or {}
+    host_id = int(data.get('hostId') or 0)
+    name = str(data.get('name') or '').strip()
+    driver = str(data.get('driver') or 'bridge').strip()
+    if not host_id or not name:
+        return fail('请指定主机和网络名', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.network_create(
+            host_id, name, driver=driver, username=getattr(g, 'current_user', None) or ''
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.CREATE_SUCCESS, message='网络已创建', title=name)
+
+
+@linux_bp.post('/docker/networks/remove')
+@login_required
+def docker_network_remove():
+    data = request.get_json(silent=True) or {}
+    host_id = int(data.get('hostId') or 0)
+    name = str(data.get('name') or '').strip()
+    if not host_id or not name:
+        return fail('请指定主机和网络', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.network_remove(
+            host_id, name, username=getattr(g, 'current_user', None) or ''
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.DELETE_SUCCESS, message='网络已删除', title=name)
+
+
+@linux_bp.get('/docker/volumes')
+@login_required
+def docker_volumes():
+    host_id = _docker_host_id()
+    if not host_id:
+        return fail('请选择主机', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.list_volumes(host_id))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/volumes/inspect')
+@login_required
+def docker_volume_inspect():
+    host_id = _docker_host_id()
+    name = str(request.args.get('name') or '').strip()
+    if not host_id or not name:
+        return fail('请指定主机和数据卷', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.volume_inspect(host_id, name))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.post('/docker/volumes')
+@login_required
+def docker_volume_create():
+    data = request.get_json(silent=True) or {}
+    host_id = int(data.get('hostId') or 0)
+    name = str(data.get('name') or '').strip()
+    if not host_id or not name:
+        return fail('请指定主机和数据卷名', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.volume_create(
+            host_id, name, username=getattr(g, 'current_user', None) or ''
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.CREATE_SUCCESS, message='数据卷已创建', title=name)
+
+
+@linux_bp.post('/docker/volumes/remove')
+@login_required
+def docker_volume_remove():
+    data = request.get_json(silent=True) or {}
+    host_id = int(data.get('hostId') or 0)
+    name = str(data.get('name') or '').strip()
+    if not host_id or not name:
+        return fail('请指定主机和数据卷', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.volume_remove(
+            host_id, name, username=getattr(g, 'current_user', None) or ''
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.DELETE_SUCCESS, message='数据卷已删除', title=name)
+
+
+@linux_bp.get('/docker/volumes/backup')
+@login_required
+def docker_volume_backup():
+    host_id = _docker_host_id()
+    name = str(request.args.get('name') or '').strip()
+    if not host_id or not name:
+        return fail('请指定主机和数据卷', code=ApiCode.BAD_REQUEST)
+    try:
+        filename, data = linux_docker_service.volume_backup_bytes(
+            host_id, name, username=getattr(g, 'current_user', None) or ''
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return Response(
+        data,
+        mimetype='application/gzip',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
+@linux_bp.post('/docker/volumes/restore')
+@login_required
+def docker_volume_restore():
+    host_id = int(request.form.get('hostId') or 0)
+    name = str(request.form.get('name') or '').strip()
+    f = request.files.get('file')
+    if not host_id or not name or not f:
+        return fail('请指定主机、数据卷并上传备份', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.volume_restore_file(
+            host_id,
+            name,
+            f.read(),
+            username=getattr(g, 'current_user', None) or '',
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.UPDATE_SUCCESS, message='数据卷已恢复', title=name)
+
+
+@linux_bp.get('/docker/compose')
+@login_required
+def docker_compose_ls():
+    host_id = _docker_host_id()
+    if not host_id:
+        return fail('请选择主机', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.compose_ls(host_id))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/compose/config')
+@login_required
+def docker_compose_config():
+    host_id = _docker_host_id()
+    project = str(request.args.get('project') or request.args.get('name') or '').strip()
+    file = str(request.args.get('file') or '').strip()
+    if not host_id or not project:
+        return fail('请指定主机和应用', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(linux_docker_service.compose_config(host_id, project, file=file))
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.get('/docker/compose/logs')
+@login_required
+def docker_compose_logs():
+    host_id = _docker_host_id()
+    project = str(request.args.get('project') or request.args.get('name') or '').strip()
+    if not host_id or not project:
+        return fail('请指定主机和应用', code=ApiCode.BAD_REQUEST)
+    try:
+        return ok(
+            linux_docker_service.compose_logs(
+                host_id,
+                project,
+                tail=int(request.args.get('tail') or 200),
+                file=str(request.args.get('file') or ''),
+            )
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+
+
+@linux_bp.post('/docker/compose/action')
+@login_required
+def docker_compose_action():
+    data = request.get_json(silent=True) or {}
+    host_id = int(data.get('hostId') or 0)
+    project = str(data.get('project') or data.get('name') or '').strip()
+    action = str(data.get('action') or '').strip()
+    file = str(data.get('file') or '').strip()
+    if not host_id or not project or not action:
+        return fail('参数不完整', code=ApiCode.BAD_REQUEST)
+    try:
+        result = linux_docker_service.compose_action(
+            host_id,
+            project,
+            action,
+            file=file,
+            username=getattr(g, 'current_user', None) or '',
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
+    return success(result, code=ApiCode.UPDATE_SUCCESS, message=f'Compose {action} 完成', title=project)
+
+
+@linux_bp.get('/docker/audit')
+@login_required
+def docker_audit():
+    host_id = request.args.get('hostId')
+    try:
+        items = linux_docker_service.list_audit(
+            host_id=int(host_id) if host_id else None,
+            username=request.args.get('username') or None,
+            limit=int(request.args.get('limit') or 100),
+        )
+    except ValueError as exc:
+        return fail(str(exc), code=ApiCode.BAD_REQUEST)
     return ok(items)
