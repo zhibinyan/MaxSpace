@@ -401,7 +401,11 @@ function onRowClick(row: T, index: number) {
         @click.capture="onViewportClickCapture"
       >
         <div class="max-table__track" :style="trackStyle">
-          <div class="max-table__body" role="rowgroup">
+          <div
+            class="max-table__body"
+            :class="{ 'max-table__body--placeholder': loading || !data.length }"
+            role="rowgroup"
+          >
             <div v-if="loading" class="max-table__overlay">
               <span class="max-table__spinner" />
             </div>
@@ -569,6 +573,13 @@ function onRowClick(row: T, index: number) {
 
 .max-table__track {
   min-width: max(100%, var(--max-track-min, 0px));
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.max-table--fill .max-table__track {
+  flex: 1 1 auto;
 }
 
 .max-table__head,
@@ -598,6 +609,11 @@ function onRowClick(row: T, index: number) {
   flex-direction: column;
   gap: 8px;
   min-height: 48px;
+}
+
+.max-table--fill .max-table__body {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .max-table__row {
@@ -753,6 +769,19 @@ function onRowClick(row: T, index: number) {
   text-shadow:
     0 0 1px rgba(0, 0, 0, 0.45),
     0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.max-table--fill .max-table__body--placeholder {
+  flex: 1 1 auto;
+  min-height: 160px;
+}
+
+.max-table--fill .max-table__empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
 }
 
 .max-table--loading .max-table__row {

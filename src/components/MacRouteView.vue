@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { Component } from 'vue'
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import {
   createRouteTransitionHooks,
   getKeepAliveKey,
@@ -22,6 +24,20 @@ const props = withDefaults(
 
 const transitionHooks = computed(() => createRouteTransitionHooks(props.mode))
 const isAnimated = computed(() => props.mode === 'book')
+
+function resolveAlive(
+  Component: Component | null | undefined,
+  route: RouteLocationNormalizedLoaded,
+) {
+  return Component && shouldKeepAlive(route) ? Component : null
+}
+
+function resolveLive(
+  Component: Component | null | undefined,
+  route: RouteLocationNormalizedLoaded,
+) {
+  return Component && !shouldKeepAlive(route) ? Component : null
+}
 </script>
 
 <template>
@@ -29,59 +45,84 @@ const isAnimated = computed(() => props.mode === 'book')
     <router-view v-slot="{ Component, route: viewRoute }">
       <div class="mac-route-stack">
         <!--
-          KeepAlive 必须稳定挂载：不能包在 :key=fullPath 的节点里，
-          否则书页切换会拆掉缓存，keepAlive meta 形同虚设。
-          官方模式：Transition > KeepAlive > keyed component。
+          稳定 viewport：多根页面也有高度。
+          KeepAlive 始终存在，只接收 meta.keepAlive 页面（外包单根 div）。
+          非 keepAlive 走独立分支并按 fullPath 重挂载，保证 onMounted 重新请求。
         -->
-        <template v-if="isAnimated">
-          <Transition mode="out-in" :css="false" v-bind="transitionHooks">
-            <KeepAlive :max="12">
-              <component
-                :is="Component"
-                v-if="Component && shouldKeepAlive(viewRoute)"
-                :key="getKeepAliveKey(viewRoute)"
-                class="mac-route-viewport window-content"
-              />
-            </KeepAlive>
-          </Transition>
-          <Transition mode="out-in" :css="false" v-bind="transitionHooks">
-            <component
-              :is="Component"
-              v-if="Component && !shouldKeepAlive(viewRoute)"
-              :key="getLiveRouteKey(viewRoute)"
-              class="mac-route-viewport window-content"
-            />
-            <div
-              v-else-if="!Component"
-              key="mac-route-empty"
-              class="mac-route-viewport window-content mac-route-empty"
-            >
-              {{ emptyText }}
-            </div>
-          </Transition>
-        </template>
-        <template v-else>
-          <div
-            v-if="Component"
-            class="mac-route-viewport window-content"
+        <div class="mac-route-viewport window-content">
+          <template
+            v-for="alive in [resolveAlive(Component, viewRoute)]"
+            :key="'mac-alive'"
           >
-            <KeepAlive :max="12">
-              <component
-                :is="Component"
-                v-if="shouldKeepAlive(viewRoute)"
+            <Transition
+              v-if="isAnimated"
+              mode="out-in"
+              :css="false"
+              v-bind="transitionHooks"
+            >
+              <KeepAlive :max="12">
+                <div
+                  v-if="alive"
+                  :key="getKeepAliveKey(viewRoute)"
+                  class="mac-route-page"
+                >
+                  <component :is="alive" />
+                </div>
+              </KeepAlive>
+            </Transition>
+            <KeepAlive v-else :max="12">
+              <div
+                v-if="alive"
                 :key="getKeepAliveKey(viewRoute)"
-              />
+                class="mac-route-page"
+              >
+                <component :is="alive" />
+              </div>
             </KeepAlive>
-            <component
-              :is="Component"
-              v-if="!shouldKeepAlive(viewRoute)"
-              :key="getLiveRouteKey(viewRoute)"
-            />
-          </div>
-          <div v-else class="mac-route-viewport window-content mac-route-empty">
-            {{ emptyText }}
-          </div>
-        </template>
+          </template>
+
+          <template
+            v-for="live in [resolveLive(Component, viewRoute)]"
+            :key="'mac-live'"
+          >
+            <Transition
+              v-if="isAnimated"
+              mode="out-in"
+              :css="false"
+              v-bind="transitionHooks"
+            >
+              <div
+                v-if="live"
+                :key="getLiveRouteKey(viewRoute)"
+                class="mac-route-page"
+              >
+                <component :is="live" />
+              </div>
+              <div
+                v-else-if="!Component"
+                key="mac-route-empty"
+                class="mac-route-page mac-route-empty"
+              >
+                {{ emptyText }}
+              </div>
+            </Transition>
+            <template v-else>
+              <div
+                v-if="live"
+                :key="getLiveRouteKey(viewRoute)"
+                class="mac-route-page"
+              >
+                <component :is="live" />
+              </div>
+              <div
+                v-else-if="!Component"
+                class="mac-route-page mac-route-empty"
+              >
+                {{ emptyText }}
+              </div>
+            </template>
+          </template>
+        </div>
       </div>
     </router-view>
   </div>
@@ -91,6 +132,7 @@ const isAnimated = computed(() => props.mode === 'book')
 .mac-route-stage {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -105,6 +147,7 @@ const isAnimated = computed(() => props.mode === 'book')
   grid-template-columns: 1fr;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   width: 100%;
   overflow: hidden;
   transform-style: preserve-3d;
@@ -112,20 +155,19 @@ const isAnimated = computed(() => props.mode === 'book')
 
 .mac-route-viewport {
   grid-area: 1 / 1;
+  position: relative;
   width: 100%;
   height: 100%;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  min-width: 0;
   backface-visibility: hidden;
   transform-style: preserve-3d;
 }
 
 .window-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
+  min-width: 0;
   height: 100%;
   overflow: hidden;
   padding: 10px;
@@ -133,11 +175,28 @@ const isAnimated = computed(() => props.mode === 'book')
   border-top: 1px solid rgba(255, 255, 255, 0.22);
 }
 
+/*
+  Transition / KeepAlive 是抽象组件，页面根会直接挂到 viewport 下。
+  绝对定位叠层，避免切换瞬间双页把 flex 高度撑裂。
+*/
+.mac-route-page {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  backface-visibility: hidden;
+}
+
 .mac-route-empty {
   padding: 48px 24px;
   text-align: center;
   color: rgba(255, 255, 255, 0.65);
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .window-content :deep(.el-card) {
