@@ -1,24 +1,56 @@
 <script setup lang="ts">
+import { nextTick, onUnmounted, ref, watch } from 'vue'
 import { LAYOUT_TOOLBAR_TELEPORT_TARGET } from './layoutToolbar'
 import { useLayoutToolbarTeleport } from './useLayoutToolbarTeleport'
 import { MaxButton } from '@/components/maxButton'
+
 const { toolbarTeleportReady } = useLayoutToolbarTeleport()
+const leftRef = ref<HTMLElement | null>(null)
+
+/** 鼠标滚轮横向滚动工具栏左侧 */
+function onLeftWheel(e: WheelEvent) {
+  const el = leftRef.value
+  if (!el) return
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+  if (!delta) return
+  if (el.scrollWidth <= el.clientWidth) return
+  e.preventDefault()
+  el.scrollLeft += delta
+}
+
+watch(
+  [toolbarTeleportReady, leftRef],
+  async ([ready], _, onCleanup) => {
+    if (!ready) return
+    await nextTick()
+    const el = leftRef.value
+    if (!el) return
+    el.addEventListener('wheel', onLeftWheel, { passive: false })
+    onCleanup(() => {
+      el.removeEventListener('wheel', onLeftWheel)
+    })
+  },
+  { flush: 'post' },
+)
+
+onUnmounted(() => {
+  leftRef.value?.removeEventListener('wheel', onLeftWheel)
+})
 </script>
 
 <template>
   <div>
-  
-  <Teleport v-if="toolbarTeleportReady" defer :to="LAYOUT_TOOLBAR_TELEPORT_TARGET">
-    <div class="layout-toolbar">
-      <div class="layout-toolbar-left">
-        <slot name="left" />
+    <Teleport v-if="toolbarTeleportReady" defer :to="LAYOUT_TOOLBAR_TELEPORT_TARGET">
+      <div class="layout-toolbar">
+        <div ref="leftRef" class="layout-toolbar-left">
+          <slot name="left" />
+        </div>
+        <div class="layout-toolbar-right">
+          <slot name="right" />
+          <MaxButton title="展开">展开</MaxButton>
+        </div>
       </div>
-      <div class="layout-toolbar-right">
-        <slot name="right" />
-        <MaxButton title="展开">展开</MaxButton>
-      </div>
-    </div>
-  </Teleport>
+    </Teleport>
   </div>
 </template>
 

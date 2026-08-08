@@ -28,6 +28,56 @@ const isFullscreen = ref(false)
 const fullscreenEnabled = ref(localStorage.getItem(FULLSCREEN_KEY) !== 'false')
 const macDesktopRef = ref<HTMLElement | null>(null)
 const closingWindow = ref(false)
+const routeTabsRef = ref<HTMLElement | null>(null)
+
+/** 鼠标滚轮横向滚动标签栏 */
+function onTabsWheel(e: WheelEvent) {
+  const el = routeTabsRef.value
+  if (!el) return
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+  if (!delta) return
+  if (el.scrollWidth <= el.clientWidth) return
+  e.preventDefault()
+  el.scrollLeft += delta
+}
+
+function bindTabsWheel() {
+  routeTabsRef.value?.addEventListener('wheel', onTabsWheel, { passive: false })
+}
+
+function unbindTabsWheel() {
+  routeTabsRef.value?.removeEventListener('wheel', onTabsWheel)
+}
+
+const dockTrackRef = ref<HTMLElement | null>(null)
+
+/** 鼠标滚轮横向滚动程序坞（需 passive:false 才能阻止页面纵向滚动） */
+function onDockWheel(e: WheelEvent) {
+  const el = dockTrackRef.value
+  if (!el) return
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+  if (!delta) return
+  if (el.scrollWidth <= el.clientWidth) return
+  e.preventDefault()
+  el.scrollLeft += delta
+}
+
+function bindDockWheel() {
+  dockTrackRef.value?.addEventListener('wheel', onDockWheel, { passive: false })
+}
+
+function unbindDockWheel() {
+  dockTrackRef.value?.removeEventListener('wheel', onDockWheel)
+}
+
+function onDockLauncherClick() {
+  appDockOpen.value = !appDockOpen.value
+}
+
+function onDockLinkClick(e: MouseEvent, title: string, path: string) {
+  showDockTooltip(e, title, path)
+  appDockOpen.value = false
+}
 
 function isDockActive(path: string) {
   return route.path === path || route.path.startsWith(`${path}/`)
@@ -168,6 +218,8 @@ onMounted(() => {
 
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   isFullscreen.value = !!document.fullscreenElement
+  bindTabsWheel()
+  bindDockWheel()
 
   if (fullscreenEnabled.value && !document.fullscreenElement) {
     enterFullscreen().then(() => {
@@ -184,6 +236,8 @@ onUnmounted(() => {
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   document.removeEventListener('click', restoreFullscreenOnInteraction)
   document.removeEventListener('keydown', restoreFullscreenOnInteraction)
+  unbindTabsWheel()
+  unbindDockWheel()
 })
 
 function navigateTab(path: string) {
@@ -289,7 +343,7 @@ async function handleLogout() {
         </nav>
       </div>
       <div class="menu-center">
-        <div class="route-tabs">
+        <div ref="routeTabsRef" class="route-tabs">
           <button
             v-for="tab in tabsStore.visitedTabs"
             :key="tab.path"
@@ -392,13 +446,13 @@ async function handleLogout() {
     <footer class="dock" :class="{ 'dock--above-launchpad': appDockOpen }">
       <div class="dock-panel">
         <nav class="dock-scroll" aria-label="程序坞">
-          <div class="dock-track">
+          <div ref="dockTrackRef" class="dock-track">
             <button
               type="button"
               class="dock-item dock-item--launcher"
               data-dock-path="__launcher__"
               aria-label="程序坞"
-              @click="appDockOpen = !appDockOpen"
+              @click="onDockLauncherClick"
               @mouseenter="showDockTooltip($event, '程序坞', '__launcher__')"
               @mouseleave="hideDockTooltip"
             >
@@ -416,7 +470,7 @@ async function handleLogout() {
               :class="{ active: isDockActive(item.path) }"
               @mouseenter="showDockTooltip($event, item.title, item.path)"
               @mouseleave="hideDockTooltip"
-              @click="showDockTooltip($event, item.title, item.path),appDockOpen = false"
+              @click="onDockLinkClick($event, item.title, item.path)"
             >
               <span class="dock-icon-large" >
                 <MaxSvg :name="item.icon" :size="42" />
