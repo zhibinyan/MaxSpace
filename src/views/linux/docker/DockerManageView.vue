@@ -63,6 +63,8 @@ type TabKey =
   | 'monitor'
   | 'audit'
 
+const DOCKER_WS_KEY = 'maxadmin_docker_workspace'
+
 const router = useRouter()
 const hosts = ref<LinuxHost[]>([])
 const hostId = ref('')
@@ -71,6 +73,34 @@ const loading = ref(false)
 const keyword = ref('')
 const monitorAuto = ref(false)
 let monitorTimer: number | null = null
+
+function persistWorkspace() {
+  try {
+    localStorage.setItem(
+      DOCKER_WS_KEY,
+      JSON.stringify({ hostId: hostId.value, tab: tab.value }),
+    )
+  } catch {
+    /* ignore */
+  }
+}
+
+function restoreWorkspace() {
+  try {
+    const raw = localStorage.getItem(DOCKER_WS_KEY)
+    if (!raw) return
+    const ws = JSON.parse(raw) as { hostId?: string; tab?: string }
+    const id = String(ws.hostId || '')
+    if (id && hosts.value.some((h) => String(h.id) === id)) {
+      hostId.value = id
+    }
+    if (ws.tab && tabs.some((t) => t.key === ws.tab)) {
+      tab.value = ws.tab as TabKey
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 const overview = ref<DockerOverview | null>(null)
 const containers = ref<DockerContainer[]>([])
@@ -562,6 +592,7 @@ async function onRestoreFile(e: Event) {
 }
 
 watch([hostId, tab], () => {
+  persistWorkspace()
   void loadTab()
   syncMonitorTimer()
 })
@@ -573,6 +604,7 @@ watch(monitorAuto, () => {
 onMounted(async () => {
   try {
     hosts.value = await fetchLinuxHosts()
+    restoreWorkspace() // 触发 watch → loadTab
   } catch {
     Message.error('加载主机列表失败')
   }
