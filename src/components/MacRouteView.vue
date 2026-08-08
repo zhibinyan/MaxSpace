@@ -4,7 +4,6 @@ import {
   createRouteTransitionHooks,
   getKeepAliveKey,
   getLiveRouteKey,
-  getRouteTransitionKey,
   shouldKeepAlive,
   type RouteTransitionMode,
 } from '../utils/routeTransition'
@@ -29,34 +28,38 @@ const isAnimated = computed(() => props.mode === 'book')
   <div class="mac-route-stage">
     <router-view v-slot="{ Component, route: viewRoute }">
       <div class="mac-route-stack">
-        <Transition
-          v-if="isAnimated"
-          mode="out-in"
-          :css="false"
-          v-bind="transitionHooks"
-        >
-          <div
-            v-if="Component"
-            :key="getRouteTransitionKey(viewRoute)"
-            class="mac-route-viewport window-content"
-          >
+        <!--
+          KeepAlive 必须稳定挂载：不能包在 :key=fullPath 的节点里，
+          否则书页切换会拆掉缓存，keepAlive meta 形同虚设。
+          官方模式：Transition > KeepAlive > keyed component。
+        -->
+        <template v-if="isAnimated">
+          <Transition mode="out-in" :css="false" v-bind="transitionHooks">
             <KeepAlive :max="12">
               <component
                 :is="Component"
-                v-if="shouldKeepAlive(viewRoute)"
+                v-if="Component && shouldKeepAlive(viewRoute)"
                 :key="getKeepAliveKey(viewRoute)"
+                class="mac-route-viewport window-content"
               />
             </KeepAlive>
+          </Transition>
+          <Transition mode="out-in" :css="false" v-bind="transitionHooks">
             <component
               :is="Component"
-              v-if="!shouldKeepAlive(viewRoute)"
+              v-if="Component && !shouldKeepAlive(viewRoute)"
               :key="getLiveRouteKey(viewRoute)"
+              class="mac-route-viewport window-content"
             />
-          </div>
-          <div v-else key="mac-route-empty" class="mac-route-viewport window-content mac-route-empty">
-            {{ emptyText }}
-          </div>
-        </Transition>
+            <div
+              v-else-if="!Component"
+              key="mac-route-empty"
+              class="mac-route-viewport window-content mac-route-empty"
+            >
+              {{ emptyText }}
+            </div>
+          </Transition>
+        </template>
         <template v-else>
           <div
             v-if="Component"

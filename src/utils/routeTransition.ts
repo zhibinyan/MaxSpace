@@ -38,11 +38,6 @@ function prefersReducedMotion(): boolean {
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-/** 路由切换时的 Transition key */
-export function getRouteTransitionKey(route: RouteLocationNormalizedLoaded): string {
-  return route.fullPath
-}
-
 export function getKeepAliveKey(route: RouteLocationNormalizedLoaded): string {
   return String(route.name ?? route.fullPath)
 }
