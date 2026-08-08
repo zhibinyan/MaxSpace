@@ -120,12 +120,20 @@ function measureTrackMinWidth() {
   return Math.ceil(width)
 }
 
+function readOverflow(el: HTMLElement) {
+  return {
+    x: el.scrollWidth > el.clientWidth + 1,
+    y: el.scrollHeight > el.clientHeight + 1,
+  }
+}
+
 function updateScrollMetrics() {
   trackMinWidth.value = measureTrackMinWidth()
   const viewport = viewportRef.value
   if (!viewport) return
-  canScrollX.value = viewport.scrollWidth > viewport.clientWidth + 1
-  canScrollY.value = viewport.scrollHeight > viewport.clientHeight + 1
+  const { x, y } = readOverflow(viewport)
+  canScrollX.value = x
+  canScrollY.value = y
 }
 
 let layoutRaf = 0
@@ -151,6 +159,78 @@ function onViewportScroll() {
     syncHeadScrollLeft()
     updateScrollMetrics()
   })
+}
+
+/** 左键拖拽横向/纵向滚动 */
+const DRAG_THRESHOLD = 4
+const dragging = ref(false)
+let dragPointerId: number | null = null
+let dragStartX = 0
+let dragStartY = 0
+let dragScrollLeft = 0
+let dragScrollTop = 0
+let dragMoved = false
+
+function isInteractiveTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false
+  return !!target.closest(
+    'input, button, a, label, textarea, select, [role="button"], .max-check',
+  )
+}
+
+function onViewportPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return
+  const el = viewportRef.value
+  if (!el) return
+  if (isInteractiveTarget(e.target)) return
+
+  // 以当前 DOM 溢出为准，避免 class/ref 滞后导致拖不动
+  const { x, y } = readOverflow(el)
+  canScrollX.value = x
+  canScrollY.value = y
+  if (!x && !y) return
+
+  dragPointerId = e.pointerId
+  dragStartX = e.clientX
+  dragStartY = e.clientY
+  dragScrollLeft = el.scrollLeft
+  dragScrollTop = el.scrollTop
+  dragMoved = false
+  dragging.value = true
+  el.setPointerCapture(e.pointerId)
+}
+
+function onViewportPointerMove(e: PointerEvent) {
+  if (!dragging.value || e.pointerId !== dragPointerId) return
+  const el = viewportRef.value
+  if (!el) return
+
+  const dx = e.clientX - dragStartX
+  const dy = e.clientY - dragStartY
+  if (!dragMoved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+  dragMoved = true
+
+  const { x, y } = readOverflow(el)
+  if (x) el.scrollLeft = dragScrollLeft - dx
+  if (y) el.scrollTop = dragScrollTop - dy
+}
+
+function endViewportDrag(e: PointerEvent) {
+  if (e.pointerId !== dragPointerId) return
+  const el = viewportRef.value
+  if (el?.hasPointerCapture(e.pointerId)) {
+    el.releasePointerCapture(e.pointerId)
+  }
+  dragging.value = false
+  dragPointerId = null
+}
+
+/** 拖拽后抑制一次 click，避免误触 row-click */
+function onViewportClickCapture(e: MouseEvent) {
+  if (!dragMoved) return
+  e.preventDefault()
+  e.stopPropagation()
+  dragMoved = false
 }
 
 let resizeObserver: ResizeObserver | null = null
@@ -310,9 +390,15 @@ function onRowClick(row: T, index: number) {
         :class="{
           'max-table__viewport--scrollable-x': canScrollX,
           'max-table__viewport--scrollable-y': canScrollY,
+          'max-table__viewport--dragging': dragging,
         }"
         :style="viewportStyle"
         @scroll="onViewportScroll"
+        @pointerdown="onViewportPointerDown"
+        @pointermove="onViewportPointerMove"
+        @pointerup="endViewportDrag"
+        @pointercancel="endViewportDrag"
+        @click.capture="onViewportClickCapture"
       >
         <div class="max-table__track" :style="trackStyle">
           <div class="max-table__body" role="rowgroup">
@@ -399,6 +485,9 @@ function onRowClick(row: T, index: number) {
 .max-table {
   position: relative;
   width: 100%;
+  max-width: 100%;
+  /* flex 子项默认 min-width:auto，会被列宽撑开导致无法内部横向滚动 */
+  min-width: 0;
   --max-text: #ffffff;
   --max-head-text: rgba(255, 255, 255, 0.96);
   --max-font-size: 16px;
@@ -410,8 +499,10 @@ function onRowClick(row: T, index: number) {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   height: 100%;
+  max-width: 100%;
 }
 
 .max-table__shell {
@@ -437,17 +528,29 @@ function onRowClick(row: T, index: number) {
 
 .max-table__head-scroller {
   flex-shrink: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
 .max-table__viewport {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.max-table__viewport--scrollable-x,
+.max-table__viewport--scrollable-y {
+  cursor: grab;
+}
+
+.max-table__viewport--dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .max-table__viewport::-webkit-scrollbar {
