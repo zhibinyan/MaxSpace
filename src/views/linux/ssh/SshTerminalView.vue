@@ -2,17 +2,16 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  fetchLinuxAiHistory,
   fetchLinuxHosts,
   getLinuxPref,
   setLinuxPref,
-  type LinuxAiChatItem,
   type LinuxHost,
 } from '@/api/linux'
 import Message from '@/components/massage'
 import { MaxButton } from '@/components/maxButton'
 import { MaxSelect, type MaxSelectOption } from '@/components/maxSelect'
 import { LayoutToolbar } from '@/layout'
+import dockerCmdDocs from '../docker.json'
 import AIssh from './AIssh.vue'
 import SshTermPane, { type PaneStatus } from './SshTermPane.vue'
 import {
@@ -30,6 +29,26 @@ import {
 } from './sshSessionStore'
 
 defineOptions({ name: 'SshTerminalView' })
+
+type DockerCmdItem = { command: string; description?: string }
+type DockerExample = { purpose: string; command: string; notes?: string }
+type DockerTechnology = {
+  name: string
+  description?: string
+  examples?: DockerExample[]
+}
+type DockerCategory = {
+  name: string
+  commands?: DockerCmdItem[]
+  technologies?: DockerTechnology[]
+}
+type DockerDoc = {
+  title: string
+  categories: DockerCategory[]
+}
+
+const dockerDocs = dockerCmdDocs as DockerDoc[]
+const expandedCats = ref<Record<string, boolean>>({})
 
 interface PaneState {
   id: string
@@ -55,8 +74,6 @@ const activePaneId = ref('p0')
 const sideTab = ref<'recent' | 'cmds' | 'ai'>('recent')
 
 const recent = ref<SshRecentSession[]>([])
-const aiHistory = ref<LinuxAiChatItem[]>([])
-const aiHistoryLoading = ref(false)
 
 const paneRefs = ref<Record<string, InstanceType<typeof SshTermPane> | null>>({})
 const stageRef = ref<HTMLElement | null>(null)
@@ -175,15 +192,29 @@ async function refreshLists() {
   recent.value = await loadRecentSessionsAsync()
 }
 
-async function loadAiHistory() {
-  aiHistoryLoading.value = true
-  try {
-    aiHistory.value = await fetchLinuxAiHistory(50)
-  } catch {
-    /* ignore */
-  } finally {
-    aiHistoryLoading.value = false
+function catKey(docIndex: number, catIndex: number) {
+  return `${docIndex}-${catIndex}`
+}
+
+function isCatOpen(docIndex: number, catIndex: number) {
+  const key = catKey(docIndex, catIndex)
+  if (key in expandedCats.value) return expandedCats.value[key]
+  return docIndex === 0 && catIndex === 0
+}
+
+function toggleCat(docIndex: number, catIndex: number) {
+  const key = catKey(docIndex, catIndex)
+  expandedCats.value[key] = !isCatOpen(docIndex, catIndex)
+}
+
+function runDockerCmd(raw: string) {
+  let cmd = raw.trim()
+  if (!cmd) return
+  if (!cmd.includes('\n') && cmd.includes(' 或 ')) {
+    cmd = cmd.split(' 或 ')[0]!.trim()
   }
+  // 只填入终端，不回车；用户确认后再按 Enter 发送
+  sendToActive(cmd.endsWith('\n') ? cmd.replace(/\n+$/, '') : cmd, false)
 }
 
 async function loadHosts() {
@@ -328,10 +359,6 @@ function runHistoryCmd(cmd: string) {
   sendToActive(cmd, true)
 }
 
-function runAiHistoryItem(item: LinuxAiChatItem) {
-  runHistoryCmd(item.answer)
-}
-
 /** 拖拽分割条 */
 function startDrag(kind: 'h' | 'v' | 'qc' | 'qr', e: MouseEvent) {
   e.preventDefault()
@@ -460,10 +487,6 @@ watch(layout, () => {
 
 watch([theme, encoding], () => persistTermPrefs())
 
-watch(sideTab, (tab) => {
-  if (tab === 'cmds') void loadAiHistory()
-})
-
 watch(
   () => route.query.hostId,
   (val) => {
@@ -578,30 +601,43 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <div v-else-if="sideTab === 'cmds'" class="ssh-side__list">
-          <div class="ssh-side__hist-head">
-            <h4>AI 命令记录</h4>
-            <button
-              type="button"
-              class="ssh-side__refresh"
-              :disabled="aiHistoryLoading"
-              @click="loadAiHistory"
-            >
-              {{ aiHistoryLoading ? '加载中…' : '刷新' }}
-            </button>
+        <div v-else-if="sideTab === 'cmds'" class="ssh-side__list ssh-side__cmds">
+          <div v-for="(doc, di) in dockerDocs" :key="doc.title" class="ssh-side__doc">
+            <h4 class="ssh-side__doc-title">{{ doc.title }}</h4>
+            <div v-for="(cat, ci) in doc.categories" :key="cat.name" class="ssh-side__cat">
+              <button type="button" class="ssh-side__cat-toggle" @click="toggleCat(di, ci)">
+                <em>{{ isCatOpen(di, ci) ? '▾' : '▸' }}</em>
+                <span>{{ cat.name }}</span>
+              </button>
+              <div v-if="isCatOpen(di, ci)" class="ssh-side__cat-body">
+                <button
+                  v-for="(item, idx) in cat.commands || []"
+                  :key="`${cat.name}-c-${idx}`"
+                  type="button"
+                  class="ssh-side__item"
+                  :title="item.description || item.command"
+                  @click="runDockerCmd(item.command)"
+                >
+                  <strong>{{ item.command }}</strong>
+                  <span v-if="item.description">{{ item.description }}</span>
+                </button>
+                <template v-for="(tech, ti) in cat.technologies || []" :key="`${cat.name}-t-${ti}`">
+                  <p class="ssh-side__tech">{{ tech.name }}</p>
+                  <button
+                    v-for="(ex, ei) in tech.examples || []"
+                    :key="`${cat.name}-t-${ti}-e-${ei}`"
+                    type="button"
+                    class="ssh-side__item"
+                    :title="ex.notes || ex.purpose"
+                    @click="runDockerCmd(ex.command)"
+                  >
+                    <strong>{{ ex.purpose }}</strong>
+                    <span>{{ ex.command }}</span>
+                  </button>
+                </template>
+              </div>
+            </div>
           </div>
-          <p v-if="!aiHistory.length && !aiHistoryLoading" class="ssh-side__empty">暂无记录</p>
-          <button
-            v-for="item in aiHistory"
-            :key="item.id"
-            type="button"
-            class="ssh-side__item"
-            @click="runAiHistoryItem(item)"
-          >
-            <strong>{{ item.prompt }}</strong>
-            <span>{{ item.answer }}</span>
-            <em class="ssh-side__time">{{ item.createdAt }}</em>
-          </button>
         </div>
 
         <div v-else class="ssh-side__ai">
@@ -756,6 +792,66 @@ onUnmounted(() => {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.55);
   word-break: break-all;
+}
+
+.ssh-side__cmds {
+  gap: 10px;
+}
+
+.ssh-side__doc-title {
+  margin: 4px 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.4;
+}
+
+.ssh-side__cat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.ssh-side__cat-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ssh-side__cat-toggle em {
+  flex-shrink: 0;
+  width: 12px;
+  font-style: normal;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.ssh-side__cat-toggle:hover {
+  border-color: rgba(10, 132, 255, 0.35);
+  background: rgba(10, 132, 255, 0.12);
+}
+
+.ssh-side__cat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 2px;
+}
+
+.ssh-side__tech {
+  margin: 4px 2px 0;
+  font-size: 11px;
+  color: rgba(158, 203, 255, 0.9);
 }
 
 .ssh-status {

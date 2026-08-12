@@ -1,0 +1,480 @@
+[
+{
+    "title": "Docker 常用命令大全（完整版）",
+    "version": "2.1",
+    "description": "按功能分类整理，涵盖日常开发运维及进阶管理命令，补充了系统日志、构建工具等高级命令",
+    "categories": [
+      {
+        "name": "基础命令",
+        "commands": [
+          { "command": "docker --version", "description": "查看 Docker CLI 版本" },
+          { "command": "docker version", "description": "显示所有 Docker 组件的详细版本信息" },
+          { "command": "docker info", "description": "查看 Docker 系统信息（容器/镜像数量、存储驱动、内核版本等）" },
+          { "command": "docker help 或 docker --help", "description": "显示帮助文档，列出所有可用命令" }
+        ]
+      },
+      {
+        "name": "服务管理（系统命令）",
+        "commands": [
+          { "command": "systemctl start docker", "description": "启动 Docker 服务（Linux）" },
+          { "command": "systemctl stop docker", "description": "停止 Docker 服务（Linux）" },
+          { "command": "systemctl restart docker", "description": "重启 Docker 服务（Linux）" },
+          { "command": "systemctl enable docker", "description": "设置 Docker 开机自启（Linux）" },
+          { "command": "systemctl disable docker", "description": "取消 Docker 开机自启（Linux）" },
+          { "command": "systemctl status docker", "description": "查看 Docker 服务运行状态（Linux）" },
+          { "command": "sudo journalctl -u docker -f", "description": "实时查看 Docker 守护进程的日志（Linux）" }
+        ]
+      },
+      {
+        "name": "镜像管理 - 查看与搜索",
+        "commands": [
+          { "command": "docker images 或 docker image ls", "description": "列出本地所有镜像" },
+          { "command": "docker images -a", "description": "列出所有镜像（含中间层）" },
+          { "command": "docker images -q", "description": "仅显示镜像 ID" },
+          { "command": "docker search <镜像名>", "description": "在 Docker Hub 搜索镜像" },
+          { "command": "docker search --limit N <镜像名>", "description": "限制搜索结果数量" },
+          { "command": "docker history <镜像名>", "description": "查看镜像的构建历史" },
+          { "command": "docker inspect <镜像名>", "description": "查看镜像的详细信息（JSON 格式）" }
+        ]
+      },
+      {
+        "name": "镜像管理 - 拉取、推送与构建",
+        "commands": [
+          { "command": "docker pull <镜像名>:<标签>", "description": "从仓库拉取镜像" },
+          { "command": "docker push <镜像名>:<标签>", "description": "将本地镜像推送到仓库" },
+          { "command": "docker login [仓库地址]", "description": "登录到 Docker 仓库" },
+          { "command": "docker logout [仓库地址]", "description": "从 Docker 仓库注销" },
+          { "command": "docker build -t <镜像名>:<标签> <路径>", "description": "从 Dockerfile 构建镜像" },
+          { "command": "docker build --no-cache -t <镜像名>:<标签> .", "description": "构建时不使用缓存" },
+          { "command": "docker build --build-arg <变量>=<值> -t <镜像名> .", "description": "构建时传递构建参数" },
+          { "command": "docker build -f <Dockerfile路径> -t <镜像名> .", "description": "指定 Dockerfile 路径构建" }
+        ]
+      },
+      {
+        "name": "镜像管理 - 标签、删除、导入与导出",
+        "commands": [
+          { "command": "docker tag <源镜像> <目标镜像>", "description": "为镜像添加新标签" },
+          { "command": "docker rmi <镜像ID或名称>", "description": "删除镜像" },
+          { "command": "docker rmi -f <镜像名>", "description": "强制删除镜像（即使被容器使用）" },
+          { "command": "docker rmi $(docker images -q)", "description": "删除所有镜像" },
+          { "command": "docker save -o <文件名>.tar <镜像名>", "description": "将镜像保存为 tar 文件" },
+          { "command": "docker load -i <文件名>.tar", "description": "从 tar 文件加载镜像" },
+          { "command": "docker import <文件或URL> <镜像名>:<标签>", "description": "从 tarball 导入内容创建镜像" },
+          { "command": "docker image prune -a", "description": "删除所有未使用的镜像" },
+          { "command": "docker image prune -f", "description": "强制清理未使用的镜像（不提示确认）" }
+        ]
+      },
+      {
+        "name": "容器生命周期 - 创建与运行",
+        "commands": [
+          { "command": "docker run <镜像名>", "description": "创建并启动新容器" },
+          { "command": "docker run -d <镜像名>", "description": "后台运行（守护模式）" },
+          { "command": "docker run -p <宿主机端口>:<容器端口> <镜像名>", "description": "端口映射" },
+          { "command": "docker run -v <宿主机路径>:<容器路径> <镜像名>", "description": "挂载数据卷" },
+          { "command": "docker run --name <容器名> <镜像名>", "description": "指定容器名称" },
+          { "command": "docker run -e <环境变量>=<值> <镜像名>", "description": "设置环境变量" },
+          { "command": "docker run --network <网络名> <镜像名>", "description": "指定容器网络" },
+          { "command": "docker run --restart=always <镜像名>", "description": "设置自动重启策略" },
+          { "command": "docker run -it <镜像名> /bin/bash", "description": "交互式运行并进入容器终端" },
+          { "command": "docker run --rm <镜像名>", "description": "容器停止后自动删除" },
+          { "command": "docker create <镜像名>", "description": "创建容器但不启动" },
+          { "command": "docker create -it <镜像名>", "description": "创建交互式容器（带伪终端）" }
+        ]
+      },
+      {
+        "name": "容器生命周期 - 查看容器",
+        "commands": [
+          { "command": "docker ps 或 docker container ls", "description": "查看正在运行的容器" },
+          { "command": "docker ps -a 或 docker container ls -a", "description": "查看所有容器（含已停止的）" },
+          { "command": "docker ps -q", "description": "仅显示容器 ID" },
+          { "command": "docker ps -l", "description": "显示最新创建的容器" },
+          { "command": "docker stats", "description": "实时查看容器资源占用（CPU/内存）" },
+          { "command": "docker stats <容器名>", "description": "查看指定容器的资源占用" },
+          { "command": "docker inspect <容器名>", "description": "查看容器的详细信息（JSON 格式）" },
+          { "command": "docker port <容器名>", "description": "查看容器的端口映射" },
+          { "command": "docker top <容器名>", "description": "查看容器内运行的进程" }
+        ]
+      },
+      {
+        "name": "容器生命周期 - 启动、停止与重启",
+        "commands": [
+          { "command": "docker start <容器名>", "description": "启动已停止的容器" },
+          { "command": "docker stop <容器名>", "description": "停止运行中的容器（发送 SIGTERM）" },
+          { "command": "docker restart <容器名>", "description": "重启容器" },
+          { "command": "docker pause <容器名>", "description": "暂停容器中的所有进程" },
+          { "command": "docker unpause <容器名>", "description": "恢复暂停的容器" },
+          { "command": "docker kill <容器名>", "description": "强制终止容器（发送 SIGKILL）" },
+          { "command": "docker rename <旧名> <新名>", "description": "重命名容器" },
+          { "command": "docker update --restart=always <容器名>", "description": "更新容器的重启策略" },
+          { "command": "docker wait <容器名>", "description": "阻塞直到容器停止，然后打印退出代码" }
+        ]
+      },
+      {
+        "name": "容器生命周期 - 删除容器",
+        "commands": [
+          { "command": "docker rm <容器名>", "description": "删除已停止的容器" },
+          { "command": "docker rm -f <容器名>", "description": "强制删除运行中的容器" },
+          { "command": "docker rm -v <容器名>", "description": "删除容器并同时删除关联的数据卷" },
+          { "command": "docker rm $(docker ps -aq)", "description": "删除所有容器" },
+          { "command": "docker container prune", "description": "删除所有已停止的容器" }
+        ]
+      },
+      {
+        "name": "容器生命周期 - 进入容器与执行命令",
+        "commands": [
+          { "command": "docker exec -it <容器名> /bin/bash", "description": "进入容器交互式终端" },
+          { "command": "docker exec <容器名> <命令>", "description": "在容器中执行单条命令" },
+          { "command": "docker attach <容器名>", "description": "连接到运行中容器的标准输入/输出/错误（退出会停止容器，慎用）" }
+        ]
+      },
+      {
+        "name": "容器生命周期 - 日志与文件操作",
+        "commands": [
+          { "command": "docker logs <容器名>", "description": "查看容器日志" },
+          { "command": "docker logs -f <容器名>", "description": "实时跟踪日志（类似 tail -f）" },
+          { "command": "docker logs --tail N <容器名>", "description": "查看最后 N 行日志" },
+          { "command": "docker logs -t <容器名>", "description": "在日志中显示时间戳" },
+          { "command": "docker cp <容器名>:<容器路径> <宿主机路径>", "description": "从容器复制文件到宿主机" },
+          { "command": "docker cp <宿主机路径> <容器名>:<容器路径>", "description": "从宿主机复制文件到容器" },
+          { "command": "docker diff <容器名>", "description": "查看容器内文件系统的变更" },
+          { "command": "docker commit <容器名> <镜像名>:<版本>", "description": "将容器当前状态保存为新镜像" },
+          { "command": "docker export <容器名> -o <文件名>.tar", "description": "导出容器的文件系统为 tar 文件" },
+          { "command": "docker events", "description": "从 Docker 服务器获取实时事件" }
+        ]
+      },
+      {
+        "name": "网络管理",
+        "commands": [
+          { "command": "docker network ls", "description": "列出所有 Docker 网络" },
+          { "command": "docker network create <网络名>", "description": "创建自定义网络" },
+          { "command": "docker network inspect <网络名>", "description": "查看网络详细信息" },
+          { "command": "docker network connect <网络名> <容器名>", "description": "将容器连接到网络" },
+          { "command": "docker network disconnect <网络名> <容器名>", "description": "将容器从网络断开" },
+          { "command": "docker network rm <网络名>", "description": "删除网络" },
+          { "command": "docker network prune", "description": "删除未使用的网络" }
+        ]
+      },
+      {
+        "name": "数据卷管理",
+        "commands": [
+          { "command": "docker volume ls", "description": "列出所有数据卷" },
+          { "command": "docker volume create <卷名>", "description": "创建数据卷" },
+          { "command": "docker volume inspect <卷名>", "description": "查看卷详细信息" },
+          { "command": "docker volume rm <卷名>", "description": "删除数据卷" },
+          { "command": "docker volume prune", "description": "删除未使用的数据卷" }
+        ]
+      },
+      {
+        "name": "系统维护与清理",
+        "commands": [
+          { "command": "docker system df", "description": "查看 Docker 磁盘使用情况（镜像/容器/卷）" },
+          { "command": "docker system df -v", "description": "查看详细的磁盘使用情况" },
+          { "command": "docker system prune", "description": "清理停止的容器、未使用的网络和悬空镜像" },
+          { "command": "docker system prune -a --volumes", "description": "彻底清理（含所有未使用镜像和数据卷）" },
+          { "command": "docker system events", "description": "获取 Docker 服务器的实时事件" },
+          { "command": "docker container prune", "description": "仅清理停止的容器" },
+          { "command": "docker image prune -a", "description": "仅清理未使用的镜像" },
+          { "command": "docker volume prune", "description": "仅清理未使用的数据卷" },
+          { "command": "docker network prune", "description": "仅清理未使用的网络" }
+        ]
+      },
+      {
+        "name": "Docker Compose",
+        "commands": [
+          { "command": "docker compose up", "description": "启动服务" },
+          { "command": "docker compose up -d", "description": "后台启动服务" },
+          { "command": "docker compose down", "description": "停止并删除容器、网络等" },
+          { "command": "docker compose ps", "description": "查看服务状态" },
+          { "command": "docker compose logs", "description": "查看服务日志" },
+          { "command": "docker compose logs -f", "description": "实时跟踪服务日志" },
+          { "command": "docker compose restart", "description": "重启服务" },
+          { "command": "docker compose stop", "description": "停止服务" },
+          { "command": "docker compose start", "description": "启动已停止的服务" },
+          { "command": "docker compose up --build", "description": "重新构建镜像并启动" },
+          { "command": "docker compose exec <服务名> <命令>", "description": "在运行中的服务容器内执行命令" }
+        ]
+      },
+      {
+        "name": "Docker Swarm（集群管理）",
+        "commands": [
+          { "command": "docker swarm init", "description": "初始化 Swarm 集群" },
+          { "command": "docker swarm join --token <令牌> <管理节点IP>", "description": "加入 Swarm 集群" },
+          { "command": "docker swarm leave", "description": "离开 Swarm 集群" },
+          { "command": "docker node ls", "description": "列出 Swarm 集群中的所有节点" },
+          { "command": "docker node inspect <节点名>", "description": "查看节点详细信息" },
+          { "command": "docker node update --availability <状态> <节点名>", "description": "更新节点可用性" },
+          { "command": "docker service create <镜像名>", "description": "创建 Swarm 服务" },
+          { "command": "docker service ls", "description": "列出所有服务" },
+          { "command": "docker service scale <服务名>=<副本数>", "description": "扩缩容服务" },
+          { "command": "docker service update <服务名>", "description": "更新服务配置" },
+          { "command": "docker service rm <服务名>", "description": "删除服务" },
+          { "command": "docker stack deploy -c <compose文件> <栈名>", "description": "部署 Stack（多服务应用）" },
+          { "command": "docker stack ls", "description": "列出所有 Stack" },
+          { "command": "docker stack rm <栈名>", "description": "删除 Stack" },
+          { "command": "docker config create <配置名> <文件>", "description": "创建 Swarm 配置" },
+          { "command": "docker config ls", "description": "列出所有 Swarm 配置" },
+          { "command": "docker config rm <配置名>", "description": "删除 Swarm 配置" }
+        ]
+      },
+      {
+        "name": "Docker Trust（镜像签名与安全）",
+        "commands": [
+          { "command": "docker trust sign <镜像名>:<标签>", "description": "对镜像进行数字签名" },
+          { "command": "docker trust inspect <镜像名>:<标签>", "description": "查看镜像的签名信息" },
+          { "command": "docker trust revoke <镜像名>:<标签>", "description": "撤销镜像的签名" },
+          { "command": "docker trust key generate <密钥名>", "description": "生成签名密钥" },
+          { "command": "docker trust key load <密钥文件>", "description": "加载签名密钥" }
+        ]
+      },
+      {
+        "name": "其他高级管理命令",
+        "commands": [
+          { "command": "docker builder", "description": "管理镜像构建（底层构建器）" },
+          { "command": "docker buildx", "description": "Docker Buildx 扩展，支持多平台构建和高级构建功能" },
+          { "command": "docker context", "description": "管理 Docker 上下文（连接不同 Docker 守护进程）" },
+          { "command": "docker manifest", "description": "管理镜像清单和清单列表（多架构镜像）" },
+          { "command": "docker plugin", "description": "管理 Docker 插件（网络、卷等扩展）" }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Docker 部署常用命令与示例（针对特定技术栈）",
+    "version": "1.0",
+    "description": "涵盖常见应用（Nginx、Java、Python、SQL等）的Docker部署命令、常用参数及配置示例",
+    "categories": [
+      {
+        "name": "Web 服务器",
+        "technologies": [
+          {
+            "name": "Nginx",
+            "description": "高性能 Web 服务器，常用于静态文件服务或反向代理",
+            "common_ports": ["80", "443"],
+            "examples": [
+              {
+                "purpose": "基础运行（默认欢迎页）",
+                "command": "docker run -d -p 80:80 --name my-nginx nginx"
+              },
+              {
+                "purpose": "挂载自定义配置文件与静态文件",
+                "command": "docker run -d -p 80:80 -v /host/nginx.conf:/etc/nginx/nginx.conf:ro -v /host/static:/usr/share/nginx/html:ro --name my-nginx nginx",
+                "notes": ":ro 表示只读挂载，增加安全性"
+              },
+              {
+                "purpose": "使用自定义站点配置（sites-enabled）",
+                "command": "docker run -d -p 80:80 -v /host/sites:/etc/nginx/conf.d:ro -v /host/static:/var/www:ro --name my-nginx nginx"
+              },
+              {
+                "purpose": "启用 HTTPS（挂载证书）",
+                "command": "docker run -d -p 443:443 -v /host/certs:/etc/nginx/certs:ro -v /host/nginx-ssl.conf:/etc/nginx/nginx.conf:ro --name my-nginx nginx"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Java 应用",
+        "technologies": [
+          {
+            "name": "通用 Java 应用（JAR 包）",
+            "description": "运行任何 Java 可执行 JAR 包，基于 OpenJDK 镜像",
+            "common_ports": ["8080", "8443"],
+            "examples": [
+              {
+                "purpose": "运行 Spring Boot JAR 包（映射端口）",
+                "command": "docker run -d -p 8080:8080 -v /host/app.jar:/app.jar -e JAVA_OPTS=\"-Xmx512m\" --name my-java-app openjdk:11-jre-slim java $JAVA_OPTS -jar /app.jar"
+              },
+              {
+                "purpose": "使用自定义 JVM 参数和时区",
+                "command": "docker run -d -p 8080:8080 -e TZ=Asia/Shanghai -e JAVA_OPTS=\"-Xms256m -Xmx1024m\" -v /host/app.jar:/app.jar openjdk:17 java $JAVA_OPTS -jar /app.jar"
+              },
+              {
+                "purpose": "挂载配置文件和日志目录",
+                "command": "docker run -d -p 8080:8080 -v /host/application.yml:/config/application.yml -v /host/logs:/logs --name my-spring-boot openjdk:11 java -jar /app.jar --spring.config.location=/config/application.yml"
+              }
+            ]
+          },
+          {
+            "name": "Tomcat",
+            "description": "Apache Tomcat Servlet 容器，用于部署 WAR 包",
+            "common_ports": ["8080"],
+            "examples": [
+              {
+                "purpose": "基础运行",
+                "command": "docker run -d -p 8080:8080 --name my-tomcat tomcat:latest"
+              },
+              {
+                "purpose": "部署 WAR 包（挂载 webapps）",
+                "command": "docker run -d -p 8080:8080 -v /host/myapp.war:/usr/local/tomcat/webapps/ROOT.war --name my-tomcat tomcat"
+              },
+              {
+                "purpose": "自定义 Tomcat 配置（server.xml）",
+                "command": "docker run -d -p 8080:8080 -v /host/server.xml:/usr/local/tomcat/conf/server.xml -v /host/app.war:/usr/local/tomcat/webapps/app.war --name my-tomcat tomcat"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Python 应用",
+        "technologies": [
+          {
+            "name": "通用 Python 应用（Flask / Django）",
+            "description": "运行 Python Web 应用，通常使用 Gunicorn 或 uWSGI",
+            "common_ports": ["5000", "8000"],
+            "examples": [
+              {
+                "purpose": "运行 Flask 应用（开发模式）",
+                "command": "docker run -d -p 5000:5000 -v /host/app:/app -w /app python:3.10-slim python app.py",
+                "notes": "适用于开发，生产应使用 Gunicorn"
+              },
+              {
+                "purpose": "使用 Gunicorn 运行 Flask 应用（生产）",
+                "command": "docker run -d -p 8000:8000 -v /host/app:/app -w /app python:3.10-slim gunicorn -b 0.0.0.0:8000 app:app",
+                "notes": "app:app 表示模块名:应用实例名"
+              },
+              {
+                "purpose": "运行 Django 应用（开发）",
+                "command": "docker run -d -p 8000:8000 -v /host/django_project:/app -w /app python:3.10-slim python manage.py runserver 0.0.0.0:8000"
+              },
+              {
+                "purpose": "使用 Gunicorn 运行 Django（生产）",
+                "command": "docker run -d -p 8000:8000 -v /host/django_project:/app -w /app python:3.10-slim gunicorn myproject.wsgi:application -b 0.0.0.0:8000"
+              },
+              {
+                "purpose": "安装依赖后启动（使用 requirements.txt）",
+                "command": "docker run -d -p 5000:5000 -v /host/app:/app -w /app python:3.10-slim bash -c \"pip install -r requirements.txt && python app.py\""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "关系型数据库（SQL）",
+        "technologies": [
+          {
+            "name": "MySQL",
+            "description": "最流行的开源关系数据库",
+            "common_ports": ["3306"],
+            "examples": [
+              {
+                "purpose": "基础运行（设置 root 密码）",
+                "command": "docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=my-secret-pw --name my-mysql mysql:8.0"
+              },
+              {
+                "purpose": "指定数据库、用户及密码",
+                "command": "docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=mydb -e MYSQL_USER=myuser -e MYSQL_PASSWORD=mypass --name my-mysql mysql:8.0"
+              },
+              {
+                "purpose": "持久化数据（挂载卷）",
+                "command": "docker run -d -p 3306:3306 -v /host/mysql_data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=root --name my-mysql mysql:8.0"
+              },
+              {
+                "purpose": "使用自定义配置文件",
+                "command": "docker run -d -p 3306:3306 -v /host/my.cnf:/etc/mysql/my.cnf -v /host/mysql_data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=root --name my-mysql mysql:8.0"
+              }
+            ]
+          },
+          {
+            "name": "PostgreSQL",
+            "description": "功能强大的开源关系型数据库",
+            "common_ports": ["5432"],
+            "examples": [
+              {
+                "purpose": "基础运行",
+                "command": "docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword --name my-postgres postgres:15"
+              },
+              {
+                "purpose": "指定数据库和用户",
+                "command": "docker run -d -p 5432:5432 -e POSTGRES_USER=appuser -e POSTGRES_PASSWORD=apppass -e POSTGRES_DB=appdb --name my-postgres postgres:15"
+              },
+              {
+                "purpose": "持久化数据",
+                "command": "docker run -d -p 5432:5432 -v /host/postgres_data:/var/lib/postgresql/data -e POSTGRES_PASSWORD=mysecretpassword --name my-postgres postgres:15"
+              }
+            ]
+          },
+          {
+            "name": "Microsoft SQL Server",
+            "description": "微软 SQL Server（Linux 版本）",
+            "common_ports": ["1433"],
+            "examples": [
+              {
+                "purpose": "基础运行（需接受 EULA）",
+                "command": "docker run -d -p 1433:1433 -e ACCEPT_EULA=Y -e SA_PASSWORD=YourStrong!Passw0rd --name my-sqlserver mcr.microsoft.com/mssql/server:2022-latest",
+                "notes": "密码必须符合复杂度要求（至少8位，包含大小写字母、数字和符号）"
+              },
+              {
+                "purpose": "持久化数据",
+                "command": "docker run -d -p 1433:1433 -v /host/sqlserver_data:/var/opt/mssql -e ACCEPT_EULA=Y -e SA_PASSWORD=YourStrong!Passw0rd --name my-sqlserver mcr.microsoft.com/mssql/server:2022-latest"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "NoSQL 与缓存",
+        "technologies": [
+          {
+            "name": "Redis",
+            "description": "内存键值缓存数据库",
+            "common_ports": ["6379"],
+            "examples": [
+              {
+                "purpose": "基础运行",
+                "command": "docker run -d -p 6379:6379 --name my-redis redis:7"
+              },
+              {
+                "purpose": "启用持久化（RDB）",
+                "command": "docker run -d -p 6379:6379 -v /host/redis_data:/data --name my-redis redis:7 redis-server --appendonly yes"
+              },
+              {
+                "purpose": "使用自定义配置文件",
+                "command": "docker run -d -p 6379:6379 -v /host/redis.conf:/usr/local/etc/redis/redis.conf --name my-redis redis:7 redis-server /usr/local/etc/redis/redis.conf"
+              }
+            ]
+          },
+          {
+            "name": "MongoDB",
+            "description": "文档型 NoSQL 数据库",
+            "common_ports": ["27017"],
+            "examples": [
+              {
+                "purpose": "基础运行",
+                "command": "docker run -d -p 27017:27017 --name my-mongo mongo:6"
+              },
+              {
+                "purpose": "设置认证（创建 root 用户）",
+                "command": "docker run -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=adminpass --name my-mongo mongo:6"
+              },
+              {
+                "purpose": "持久化数据",
+                "command": "docker run -d -p 27017:27017 -v /host/mongo_data:/data/db --name my-mongo mongo:6"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "消息队列",
+        "technologies": [
+          {
+            "name": "RabbitMQ",
+            "description": "开源消息代理",
+            "common_ports": ["5672", "15672"],
+            "examples": [
+              {
+                "purpose": "基础运行（含管理插件）",
+                "command": "docker run -d -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest --name my-rabbitmq rabbitmq:management"
+              },
+              {
+                "purpose": "持久化数据",
+                "command": "docker run -d -p 5672:5672 -p 15672:15672 -v /host/rabbitmq_data:/var/lib/rabbitmq -e RABBITMQ_DEFAULT_USER=admin -e RABBITMQ_DEFAULT_PASS=adminpass --name my-rabbitmq rabbitmq:management"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
